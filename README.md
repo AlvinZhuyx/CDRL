@@ -24,9 +24,15 @@ python -m torch.distributed.launch --nproc_per_node=8 --nnodes=1 --node_rank=0 -
 <img src=Images/i32_cfg2.png />
 </p>
 
-To train conditional model on ImageNet32, please download the [ImageNet](https://image-net.org/download-images) dataset. [Here](https://drive.google.com/file/d/11KGjj3YL8jDu5C4BiPXREjDJAfyBpYzf/view?usp=sharing), we provided a downsampled version of ImageNet in resolution 64 x 64. Please download the data and put it under the data folder. 
+To train conditional model on ImageNet32, please download the [ImageNet](https://image-net.org/download-images) dataset. [Here](https://drive.google.com/file/d/11KGjj3YL8jDu5C4BiPXREjDJAfyBpYzf/view?usp=sharing), we provided a downsampled version of ImageNet in resolution 64 x 64 (Given that we only carry out experiments on the resolution of 32 x 32, this downsampled version is sufficient for our usage). Please download the data and extract the contents to data/i64 folder. 
 
-Then please use the following command:
+Then please download the label using the following command:
+```
+cd data/i64
+wget https://raw.githubusercontent.com/raghakot/keras-vis/master/resources/imagenet_class_index.json
+wget https://gist.githubusercontent.com/paulgavrikov/3af1efe6f3dff63f47d48b91bb1bca6b/raw/00bad6903b5e4f84c7796b982b72e2e617e5fde1/ILSVRC2012_val_labels.json
+```
+We can then run the training use the following command:
 ```
 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=23455 main_cond.py
 ```
