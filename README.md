@@ -4,7 +4,8 @@
 <img src=Images/CDRL_training.png />
 <img src=Images/CDRL_sampling.png />
 </p>
-This is the official code implementation for ICLR 2024 spotlight paper [Learning Energy-Based Models by Cooperative Diffusion Recovery Likelihood]([https://arxiv.org/abs/2112.10752](https://openreview.net/pdf?id=AyzkDpuqcl) by Yaxuan Zhu, Jianwen Xie, Ying Nian Wu and Ruiqi Gao. 
+
+This is the official code implementation for ICLR 2024 spotlight paper [Learning Energy-Based Models by Cooperative Diffusion Recovery Likelihood](https://openreview.net/pdf?id=AyzkDpuqcl) by Yaxuan Zhu, Jianwen Xie, Ying Nian Wu and Ruiqi Gao. 
 
 ## Unconditional Generation
 
