@@ -13,6 +13,15 @@ This is the official code implementation for ICLR 2024 spotlight paper [Learning
 <img src=Images/fid_cifar10.png />
 </p>
 
+We provide our pretrained ckpt in this [link](https://drive.google.com/file/d/1DAH5V3aoRlCYSp8FAzmWFP7ztb01urED/view?usp=drive_link). To perform test using this ckpt, please change the [code](main_uncond.py) according to the following example:
+
+```
+mode = 'fid' # 'train', 'fid'
+ckpt_idx = 400000
+load_dir = YOUR_CKPT_PATH
+load_path = '{}/Cifar_10_best.pth.tar'.format(load_dir)
+```
+
 To train unconditional model on Cifar-10, please use the following command:
 ```
 python -m torch.distributed.launch --nproc_per_node=8 --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=23455 main_uncond.py
