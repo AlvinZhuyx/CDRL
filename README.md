@@ -32,6 +32,7 @@ python -m torch.distributed.launch --nproc_per_node=8 --nnodes=1 --node_rank=0 -
 <p align="center">
 <img src=Images/i32_cfg2.png />
 </p>
+
 We provide the pretrained checkpoint for Imagenet32 [here](https://drive.google.com/file/d/14QoJd_tT1_IaftTjxX4FNyEMT8MOk-Nw/view?usp=drive_link). To run testing on different guidance scale. Please the [code](main_cond.py) according to the following example:
 
 ```
