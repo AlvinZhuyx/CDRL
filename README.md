@@ -32,6 +32,14 @@ python -m torch.distributed.launch --nproc_per_node=8 --nnodes=1 --node_rank=0 -
 <p align="center">
 <img src=Images/i32_cfg2.png />
 </p>
+We provide the pretrained checkpoint for Imagenet32 [here](https://drive.google.com/file/d/14QoJd_tT1_IaftTjxX4FNyEMT8MOk-Nw/view?usp=drive_link). To run testing on different guidance scale. Please the [code](main_cond.py) according to the following example:
+
+```
+mode = 'fid_vs_w' # 'train', 'fid_vs_w'
+
+ckpt_idx = 400000
+load_path = 'YOUR_CKPT_PATH/cond_best.pth.tar'
+```
 
 To train conditional model on ImageNet32, please download the [ImageNet](https://image-net.org/download-images) dataset. [Here](https://drive.google.com/file/d/11KGjj3YL8jDu5C4BiPXREjDJAfyBpYzf/view?usp=sharing), we provided a downsampled version of ImageNet in resolution 64 x 64 (Given that we only carry out experiments on the resolution of 32 x 32, this downsampled version is sufficient for our usage). Please download the data and extract the contents to data/i64 folder. 
 
