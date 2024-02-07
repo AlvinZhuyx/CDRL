@@ -14,7 +14,7 @@ class ImageNetKaggle(Dataset):
                         self.syn_to_class[v[0]] = int(class_id)
         with open(os.path.join(root, "ILSVRC2012_val_labels.json"), "rb") as f:
                     self.val_to_syn = json.load(f)
-        samples_dir = os.path.join(root, "ILSVRC/Data/CLS-LOC", split)
+        samples_dir = os.path.join(root, split)
         for entry in os.listdir(samples_dir):
             if entry == ".DS_Store":
                 continue

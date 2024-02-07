@@ -16,8 +16,8 @@ import datetime as dt
 import re
 import shutil
 import math
-from model.ebm import EBM
-from model.unet import Unet
+from models.ebm import EBM
+from models.unet import Unet
 from matplotlib import pyplot as plt
 from torch_ema import ExponentialMovingAverage
 import pytorch_fid_wrapper as pfw
@@ -52,14 +52,15 @@ log_path = './logs/{}'.format(dataset_type)
 
 mode = 'train' # 'train', 'fid'
 
-ckpt_idx = None #550000
-load_dir = None #'./logs/celeba/pretrained'
-load_path = None #'{}/best.pth.tar'.format(load_dir)
+ckpt_idx = None # 400000
+load_dir = None # './logs/cifar10'
+load_path = None # '{}/Cifar_10_best.pth.tar'.format(load_dir)
+
 p_lr = 1e-5
-pi_lr = 5e-5
+pi_lr = 1e-4
 warmup_steps = 10000
 p_weight_decay = 0.0
-iterations = 1000001
+iterations = 500001
 p_ema_decay = 0.9999
 pi_ema_decay=0.9999
 grad_clip = 1.0
@@ -336,11 +337,11 @@ def train(args):
     ])
     # define dataset
     if dataset_type == 'cifar10':
-        trainset = torchvision.datasets.CIFAR10(root='../noise_mixture_nce/ncebm_torch/data', train=True, download=True, transform=transform_train)
+        trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
         train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, shuffle=True, drop_last=True)
         trainloader = data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=0, sampler=train_sampler)
         train_iter = iter(trainloader)
-        testset = torchvision.datasets.CIFAR10(root='../noise_mixture_nce/ncebm_torch/data', train=True, download=True, transform=transform_test)
+        testset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_test)
         testloader = data.DataLoader(testset, batch_size=1, shuffle=False, num_workers=1, drop_last=False)
     else:
         raise NotImplementedError

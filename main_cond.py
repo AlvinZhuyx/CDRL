@@ -17,8 +17,8 @@ import datetime as dt
 import re
 import shutil
 import math
-from model.ebm_cond import EBM
-from model.unet_cond import Unet
+from models.ebm_cond import EBM
+from models.unet_cond import Unet
 from matplotlib import pyplot as plt
 from torch_ema import ExponentialMovingAverage
 import pytorch_fid_wrapper as pfw
@@ -27,13 +27,9 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 ########################## hyper parameters ###################################
 seed = 5
-dataset_type = 'Imagenet' # 'cifar10' and 'Imagenet'
-if dataset_type == 'cifar10':
-    batch_size = 32
-    c = 3
-    im_sz = 32
-    n_class = 10
-elif dataset_type == 'Imagenet':
+dataset_type = 'Imagenet' 
+
+if dataset_type == 'Imagenet':
     batch_size = 32
     c = 3
     im_sz = 32
@@ -57,11 +53,12 @@ p_with_noise = True
 log_path = './logs/{}'.format(dataset_type)
 
 
-mode = 'fid_vs_w' # 'train', 'fid_vs_w'
+mode = 'train' # 'train', 'fid_vs_w'
 
-ckpt_idx = 550000
-stats_path = '/home/ruiqig/pytorch_T6/i32_train.npz'
-load_path = './logs/Imagenet/ckpt/best.pth.tar'
+ckpt_idx = 400000
+load_path = './logs/Imagenet/cond_best.pth.tar'
+
+stats_path = None
 p_lr = 1e-5
 pi_lr = 1e-4
 warmup_steps = 10000
@@ -80,8 +77,8 @@ print_iter = 100
 plot_iter = 1000
 ckpt_iter = 50000
 fid_iter = 20000
-n_fid_samples = 100
-n_fid_samples_full = 100
+n_fid_samples = 5000
+n_fid_samples_full = 5000
 
 sz_mul = 1.0
 eta = 1.0 # add a coefficient to rescale the ratio term --> enable gradient to flow through
@@ -206,9 +203,9 @@ def gen_samples(bs, p, pi, xt=None, device=None):
 
         with torch.no_grad():
             if p_with_noise:
-                xtminus1_neg0 = p(xt, logsnr_t, y, train=False) + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
+                xtminus1_neg0 = p(xt, logsnr_t, y) + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
             else:
-                xtminus1_neg0 = p(xt, logsnr_t, y, train=False)
+                xtminus1_neg0 = p(xt, logsnr_t, y)
 
         xtminus1_negk = xtminus1_neg0.detach().clone()
         xtminus1_negk.requires_grad = True            
@@ -218,7 +215,7 @@ def gen_samples(bs, p, pi, xt=None, device=None):
         if i == 1:
             xt_in = xt.detach().clone()
             xt_in.requires_grad = True
-            en = pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y, train=False)
+            en = pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y)
             en = en / sz_square
             score = torch.autograd.grad(en.sum(), xt_in)[0]
             xt = (xt_in.data + sigma_cum.reshape((len(xt), 1, 1, 1)) ** 2 * score) / torch.sqrt(a_tminus1).reshape((len(xt), 1, 1, 1))
@@ -262,7 +259,7 @@ def gen_guided_samples(bs, p, pi, xt=None, guided_weight=None, device=None):
         sz_square = (2e-4 * ct_square * (sz_mul ** 2)) * sigma ** 2
 
         with torch.no_grad():
-            pred =  (1.0 + guided_weight) * p(xt, logsnr_t, y=y, train=False) - guided_weight * p(xt, logsnr_t, y=y_uncond, train=False)
+            pred =  (1.0 + guided_weight) * p(xt, logsnr_t, y=y) - guided_weight * p(xt, logsnr_t, y=y_uncond)
             if p_with_noise:
                 xtminus1_neg0 = pred + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
             else:
@@ -277,8 +274,8 @@ def gen_guided_samples(bs, p, pi, xt=None, guided_weight=None, device=None):
         if i == 1:
             xt_in = xt.detach().clone()
             xt_in.requires_grad = True
-            en = (1.0 + guided_weight) * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y, train=False) \
-                - guided_weight * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y_uncond, train=False)
+            en = (1.0 + guided_weight) * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y) \
+                - guided_weight * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y_uncond)
             en = en / sz_square
             score = torch.autograd.grad(en.sum(), xt_in)[0]
             xt = (xt_in.data + sigma_cum.reshape((len(xt), 1, 1, 1)) ** 2 * score) / torch.sqrt(a_tminus1).reshape((len(xt), 1, 1, 1))
@@ -318,7 +315,7 @@ def gen_guided_samples2(bs, p, pi, xt=None, guided_weight=None, clip_langevin=Fa
         sz_square = (2e-4 * ct_square * (sz_mul ** 2)) * sigma ** 2
 
         with torch.no_grad():
-            pred =  (1.0 + guided_weight) * p(xt, logsnr_t, y=y, train=False) - guided_weight * p(xt, logsnr_t, y=y_uncond, train=False)
+            pred =  (1.0 + guided_weight) * p(xt, logsnr_t, y=y) - guided_weight * p(xt, logsnr_t, y=y_uncond)
             if p_with_noise:
                 xtminus1_neg0 = pred + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
             else:
@@ -332,8 +329,8 @@ def gen_guided_samples2(bs, p, pi, xt=None, guided_weight=None, clip_langevin=Fa
         if i == 1:
             xt_in = xt.detach().clone()
             xt_in.requires_grad = True
-            en = (1.0 + guided_weight) * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y, train=False) \
-                - guided_weight * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y_uncond, train=False)
+            en = (1.0 + guided_weight) * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y) \
+                - guided_weight * pi(xt_in * torch.sqrt(as_t_mul).reshape((len(xt), 1, 1, 1)), logsnr_s, y=y_uncond)
             en = en / sz_square
             score = torch.autograd.grad(en.sum(), xt_in)[0]
             xt = (xt_in.data + sigma_cum.reshape((len(xt), 1, 1, 1)) ** 2 * score) / torch.sqrt(a_tminus1).reshape((len(xt), 1, 1, 1))
@@ -407,7 +404,7 @@ def Langevin(pi, x, xt, logsnr_t, logsnr_tminus1, is_final, n_step=None, with_no
     sz_square = (2e-4 * ct_square * (sz_mul ** 2)).reshape((len(x), 1, 1, 1)) * sigma ** 2
     
     for i in range(n_step):
-        en = pi(x, logsnr_tminus1, y=y, train=False)
+        en = pi(x, logsnr_tminus1, y=y)
         en = (en - torch.sum((x - xt) ** 2, dim=[1,2,3]) * ct_square * 2e-4 * (1.0 - is_final)) * (sz_mul ** 2)
         grad = torch.autograd.grad(en.sum(), [x])[0]
         x.data = x.data + 0.5 * grad 
@@ -437,7 +434,7 @@ def Langevin_guided(pi, x, xt, logsnr_t, logsnr_tminus1, is_final, n_step=None, 
     sz_square = (2e-4 * ct_square * (sz_mul ** 2)).reshape((len(x), 1, 1, 1)) * sigma ** 2
     
     for i in range(n_step):
-        en = (1.0 + guided_weight) * pi(x, logsnr_tminus1, y=y, train=False) - guided_weight * pi(x, logsnr_tminus1, y=y_uncond, train=False)
+        en = (1.0 + guided_weight) * pi(x, logsnr_tminus1, y=y) - guided_weight * pi(x, logsnr_tminus1, y=y_uncond)
         en = (en - torch.sum((x - xt) ** 2, dim=[1,2,3]) * ct_square * 2e-4 * (1.0 - is_final)) * (sz_mul ** 2)
         grad = torch.autograd.grad(en.sum(), [x])[0]
         x.data = x.data + 0.5 * grad 
@@ -455,12 +452,7 @@ def calculate_fid_with_guide(n_samples, p, pi, real_m, real_s, save_name=None, r
     if device == torch.device('cuda', 0):
         print('calculate fid')
     start_time = time.time()
-    if dataset_type == 'cifar10':
-        bs = 100
-    elif dataset_type == 'Imagenet':
-        bs = 100
-    else:
-        raise NotImplementedError
+    bs = 100
     clip_Langevin=False
     fid_samples = []
     
@@ -515,14 +507,7 @@ def train(args):
     ])
 
     # define dataset
-    if dataset_type == 'cifar10':
-        trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, shuffle=True, drop_last=True)
-        trainloader = data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=0, sampler=train_sampler)
-        train_iter = iter(trainloader)
-        testset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_test)
-        testloader = data.DataLoader(testset, batch_size=1, shuffle=False, num_workers=1, drop_last=False)
-    elif dataset_type == 'Imagenet':
+    if dataset_type == 'Imagenet':
         from ImageNet_dataset import ImageNetKaggle
         trainset = ImageNetKaggle('data/i64', "train_64", transform_train)
         train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, shuffle=True, drop_last=True)
@@ -537,7 +522,7 @@ def train(args):
     print("Begin calculating real image statistics")
     
     
-    if os.path.exists(stats_path):
+    if stats_path is not None and os.path.exists(stats_path):
         print('Load from pre-calculated files')
         fid_data_true, testset, testloader = None, None, None
         stats = np.load(stats_path)
@@ -613,15 +598,9 @@ def train(args):
                         save_name = '{}/fid_samples_w{:.1f}.png'.format(os.path.join(log_path, timestamp), w)
                     else:
                         save_name = None
-                    out_fid, fid_samples = calculate_fid_with_guide(n_fid_samples_full, p=p, pi=pi, real_m=real_m, real_s=real_s, \
+                    calculate_fid_with_guide(n_fid_samples_full, p=p, pi=pi, real_m=real_m, real_s=real_s, \
                         save_name=save_name, return_samples=True, guided_weight=w, device=device)
-                    fid_samples = fid_samples.detach().cpu()
-                    fid_array = 2.0 * fid_samples.numpy() - 1.0
-                    print(np.amax(fid_array), np.amin(fid_array)) 
                     if device == torch.device('cuda', 0):
-                        gen_sample_dir = os.path.join(log_path, timestamp, 'gen_sample/w{:.1f}'.format(w))
-                        for i  in range(len(fid_samples)):
-                            torchvision.utils.save_image(fid_samples[i], os.path.join(gen_sample_dir, '{}.png'.format(i)), normalize=True)
                         print("Current w {}: fid {}".format(w, out_fid))
         return
     
@@ -676,15 +655,15 @@ def train(args):
         # update pi
         pi_loss_weight = 1.0 / (sigma_t / sigma_1)
         pi.train()
-        pos_energy =  pi(xtminus1 *  torch.sqrt(as_t_mul.reshape((len(x), 1, 1, 1))), logsnr_tminus1, y=y, train=False) 
+        pos_energy =  pi(xtminus1 *  torch.sqrt(as_t_mul.reshape((len(x), 1, 1, 1))), logsnr_tminus1, y=y) 
         pos_loss = -(pos_energy * pi_loss_weight).mean()
         pos_loss.backward()
         p.train()
         
         if p_with_noise:
-            xtminus1_neg0 = p(xt, logsnr_t, y, train=False) + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
+            xtminus1_neg0 = p(xt, logsnr_t, y) + torch.sqrt(beta_t_tilt * as_t_mul).reshape((len(xt), 1, 1, 1)) * torch.randn_like(xt)
         else:
-            xtminus1_neg0 = p(xt, logsnr_t, y, train=False)
+            xtminus1_neg0 = p(xt, logsnr_t, y)
 
         xtminus1_negk = xtminus1_neg0.detach().clone()
         xtminus1_negk.requires_grad = True
@@ -692,7 +671,7 @@ def train(args):
         
         xtminus1_negk = Langevin(pi, xtminus1_negk, xt, logsnr_t, logsnr_tminus1, is_final, y=y)
         
-        neg_energy = pi(xtminus1_negk * torch.sqrt(as_t_mul.reshape((len(x), 1, 1, 1))), logsnr_tminus1, y=y, train=False)
+        neg_energy = pi(xtminus1_negk * torch.sqrt(as_t_mul.reshape((len(x), 1, 1, 1))), logsnr_tminus1, y=y)
         neg_loss = (neg_energy * pi_loss_weight).mean()
         neg_loss.backward()
         torch.nn.utils.clip_grad_norm(pi.parameters(), max_norm=grad_clip)
@@ -738,7 +717,7 @@ def train(args):
             pi.train()
             p.train()
         
-        if counter > 0 and counter % fid_iter == 0:
+        if counter > -1 and counter % fid_iter == 0:
             fid_s_time = time.time()
             pi.eval()
             p.eval()
@@ -769,7 +748,7 @@ def train(args):
             pi.train()
             p.train() 
 
-        if counter > 0 and (counter % ckpt_iter == 0) and device == torch.device('cuda', 0):
+        if counter > -1 and (counter % ckpt_iter == 0) and device == torch.device('cuda', 0):
             print('Saving checkpoint')
             save_dict = {
                 'pi_state_dict': pi.state_dict(),
