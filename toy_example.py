@@ -593,12 +593,6 @@ for counter in range(n_iteration + 1):
     if counter % n_plot == 0:
         p.eval()
         pi.eval()
-
-        
-        samples = gen_samples(bs=N_sample, p=p, pi=pi)
-        with torch.no_grad():
-            ens = visualize(plot_point, pi)
-        save_figures(samples, ens, save_path=os.path.join(img_path, '{}_vis'.format(counter)))
         with pi_ema.average_parameters():
             with p_ema.average_parameters():
                 ema_samples = gen_samples(bs=N_sample, p=p, pi=pi)
