@@ -7,6 +7,24 @@
 
 This is the official code implementation for ICLR 2024 spotlight paper [Learning Energy-Based Models by Cooperative Diffusion Recovery Likelihood](https://openreview.net/pdf?id=AyzkDpuqcl) by Yaxuan Zhu, Jianwen Xie, Ying Nian Wu and Ruiqi Gao. 
 
+## Building the experiment
+We have provided the [environment file](environment.yml) and we recommend using conda to build a virtual environment.
+
+```
+conda env create -f environment.yml
+```
+
+## Toy example
+<p align="center">
+<img src=Images/toy_example.png />
+</p>
+
+To reproduce the experiments on this toy example, simply run
+
+```
+python toy_example.py
+```
+
 ## Unconditional Generation
 
 <p align="center">
