@@ -292,7 +292,7 @@ def Langevin(pi, x, xt, logsnr_t, logsnr_tminus1, is_final, n_step=None, with_no
     coeff = 1.0 / (1.0 + np.exp(-logsnr_max))
 
     ct_square = torch.ones_like(sigma_cum)  / np.sqrt(1.0 - coeff) 
-    sz_square = (sz_const * ct_square * (sz_mul ** 2)).reshape((len(x), 1)) * sigma ** 2
+    sz_square = (2. * sz_const * ct_square * (sz_mul ** 2)).reshape((len(x), 1)) * sigma ** 2
     
     for i in range(n_step):
         en = pi(x, logsnr_tminus1)
@@ -300,7 +300,7 @@ def Langevin(pi, x, xt, logsnr_t, logsnr_tminus1, is_final, n_step=None, with_no
         grad = torch.autograd.grad(en.sum(), [x])[0]
         x.data = x.data + 0.5 * grad 
         if with_noise:
-            x.data = x.data + torch.sqrt(2. * sz_square) * torch.randn_like(x)
+            x.data = x.data + torch.sqrt(sz_square) * torch.randn_like(x)
 
     x.data = x.data / (torch.sqrt(as_t_mul) + 1e-8)
     if Langevin_clip:
