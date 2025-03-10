@@ -31,6 +31,8 @@ python toy_example.py
 <img src=Images/fid_cifar10.png />
 </p>
 
+#### If the link below fails: Please use this alternative [link](https://drive.google.com/file/d/1RdUiGBlvuu5H8uGKBOOUd9cneW6dVDAB/view?usp=drive_link) instead.
+
 We provide our pretrained ckpt in this [link](https://drive.google.com/file/d/1DAH5V3aoRlCYSp8FAzmWFP7ztb01urED/view?usp=drive_link). To perform test using this ckpt, please change the [code](main_uncond.py) according to the following example:
 
 ```
